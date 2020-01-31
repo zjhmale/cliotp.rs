@@ -1,0 +1,8 @@
+[package]
+name = "cliotp"
+version = "0.1.0"
+authors = ["zjhsdtc <zjhsdtc@gmail.com>"]
+edition = "2020"
+
+[dependencies]
+libreauth = "*"
