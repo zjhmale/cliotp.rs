@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate google_authenticator;
 extern crate r2d2_redis;
 
 mod db;
