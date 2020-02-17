@@ -4,6 +4,7 @@ pub mod list;
 pub mod now;
 pub mod update;
 
+use crate::db::DB;
 pub use add::AddSubCommand;
 pub use delete::DelSubCommand;
 pub use list::ListSubCommand;
@@ -21,20 +22,12 @@ pub struct Arg {
     pub secret: Option<String>,
 }
 
-impl Arg {
-    fn to_rtn(&self) -> Rtn {
-        Rtn::Single {
-            exchange: self.exchange.to_owned(),
-            name: self.name.to_owned(),
-        }
-    }
-}
-
 type Exchange = String;
 type Name = String;
 type Secret = String;
 pub type Data = HashMap<Exchange, HashMap<Name, Secret>>;
 
+#[derive(Debug)]
 pub enum Rtn {
     Empty,
     Code { code: String },
@@ -44,11 +37,7 @@ pub enum Rtn {
 }
 
 pub trait CliSubCommand {
-    fn process(&mut self, arg: Arg) -> Result<Rtn, String>;
-}
-
-pub fn gen_key(exchange: String, name: String) -> String {
-    format!("{}, {}", exchange, name)
+    fn process(&self, arg: Arg) -> Result<Rtn, String>;
 }
 
 #[derive(StructOpt, Debug)]
@@ -57,7 +46,7 @@ pub enum Command {
     #[structopt(name = "add", about = "Create new account")]
     Add {
         #[structopt(short = "e", long = "exchange", help = "exchange name")]
-        exchange: Option<String>,
+        exchange: String,
         #[structopt(short = "n", long = "name", help = "account name")]
         name: String,
         #[structopt(short = "s", long = "secret", help = "secret key")]
@@ -67,7 +56,7 @@ pub enum Command {
     #[structopt(name = "delete", about = "Delete new account")]
     Delete {
         #[structopt(short = "e", long = "exchange", help = "exchange name")]
-        exchange: Option<String>,
+        exchange: String,
         #[structopt(short = "n", long = "name", help = "account name")]
         name: String,
     },
@@ -75,7 +64,7 @@ pub enum Command {
     #[structopt(name = "update", about = "Update new account")]
     Update {
         #[structopt(short = "e", long = "exchange", help = "exchange name")]
-        exchange: Option<String>,
+        exchange: String,
         #[structopt(short = "n", long = "name", help = "account name")]
         name: String,
         #[structopt(short = "s", long = "secret", help = "secret key")]
@@ -91,31 +80,48 @@ pub enum Command {
     #[structopt(name = "now", about = "Show account GA code")]
     Now {
         #[structopt(short = "e", long = "exchange", help = "exchange name")]
-        exchange: Option<String>,
+        exchange: String,
         #[structopt(short = "n", long = "name", help = "account name")]
         name: String,
     },
 }
 
-pub fn process() -> String {
+pub fn process(db: DB) -> Result<String, String> {
     let result = match Command::from_args() {
         Command::Add {
             exchange,
             name,
             secret,
-        } => String::from(""),
+        } => AddSubCommand { db: &db }.process(Arg {
+            exchange: exchange,
+            name: name,
+            secret: Some(secret),
+        }),
 
-        Command::Delete { exchange, name } => String::from(""),
+        Command::Delete { exchange, name } => DelSubCommand { db: &db }.process(Arg {
+            exchange: exchange,
+            name: name,
+            secret: None,
+        }),
 
         Command::Update {
             exchange,
             name,
             secret,
-        } => String::from(""),
+        } => UpdateSubCommand { db: &db }.process(Arg {
+            exchange: exchange,
+            name: name,
+            secret: Some(secret),
+        }),
 
-        Command::List { exchange } => String::from(""),
+        Command::List { exchange } => ListSubCommand { db: &db }.process(exchange),
 
-        Command::Now { exchange, name } => String::from(""),
+        Command::Now { exchange, name } => NowSubCommand { db: &db }.process(Arg {
+            exchange: exchange,
+            name: name,
+            secret: None,
+        }),
     };
-    result
+
+    result.map(|rtn| format!("{:?}", rtn))
 }

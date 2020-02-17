@@ -1,36 +1,23 @@
 #[macro_use]
 extern crate serde_derive;
-#[macro_use]
-extern crate lazy_static;
+extern crate r2d2_redis;
 
 mod db;
 mod subcommands;
 
-use std::collections::HashMap;
-use std::process;
-use subcommands::{
-    AddSubCommand, Arg, Command, DelSubCommand, ListSubCommand, NowSubCommand, Rtn,
-    UpdateSubCommand,
-};
+use db::{r2d2, RedisConnectionManager, DB};
 
 fn main() {
+    let manager = RedisConnectionManager::new("redis://localhost").unwrap();
+    let pool = r2d2::Pool::builder().build(manager).unwrap();
+    let db = DB {
+        db_name: "cliotp",
+        pool: &pool,
+    };
+    let result = subcommands::process(db);
 
-    // let result = match Command::from_args() {
-    // Command::Add {
-    // exchange,
-    // name,
-    // secret,
-    // } => (),
-    //
-    // Command::Update {
-    // exchange,
-    // name,
-    // secret,
-    // } => (),
-    // };
-
-    // if let Err(e) = result {
-    // e.pretty_print();
-    // std::process::exit(1);
-    // }
+    if let Err(e) = result {
+        println!("{:?}", e);
+        std::process::exit(1);
+    }
 }

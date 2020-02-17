@@ -1,12 +1,12 @@
-use super::{Arg, CliSubCommand, Rtn};
+use super::Rtn;
 use crate::db::DB;
 
 pub struct ListSubCommand<'a> {
-    db: &'a DB<'a>,
+    pub db: &'a DB<'a>,
 }
 
-impl<'a> CliSubCommand for ListSubCommand<'a> {
-    fn process(&mut self, arg: Arg) -> Result<Rtn, String> {
-        Ok(arg.to_rtn())
+impl<'a> ListSubCommand<'a> {
+    pub fn process(&self, exchange: Option<String>) -> Result<Rtn, String> {
+        self.db.list(exchange)
     }
 }

@@ -1,16 +1,13 @@
-extern crate r2d2_redis;
-
-use serde_json::json;
-
-use crate::subcommands::{Arg, CliSubCommand, Data, Rtn};
-use r2d2_redis::r2d2::PooledConnection;
-use r2d2_redis::redis::{Commands, Connection, RedisResult};
-use r2d2_redis::{r2d2, RedisConnectionManager};
+use crate::subcommands::{Arg, Data, Rtn};
 use std::collections::HashMap;
 
+pub use r2d2_redis::r2d2::PooledConnection;
+pub use r2d2_redis::redis::{Commands, Connection, RedisResult};
+pub use r2d2_redis::{r2d2, RedisConnectionManager};
+
 pub struct DB<'a> {
-    db_name: &'a str,
-    pool: &'a r2d2::Pool<RedisConnectionManager>,
+    pub db_name: &'a str,
+    pub pool: &'a r2d2::Pool<RedisConnectionManager>,
 }
 
 impl<'a> DB<'a> {
@@ -40,11 +37,8 @@ impl<'a> DB<'a> {
             arg.secret
                 .to_owned()
                 .ok_or(String::from("no secret supplied"))
-                .and_then(|secret| match table.get_mut(&arg.exchange) {
-                    Some(exchange_data) => {
-                        exchange_data.insert(arg.name.to_owned(), secret);
-                        Ok(Rtn::Empty)
-                    }
+                .and_then(|secret| match table.get(&arg.exchange) {
+                    Some(_) => Err(String::from("account exists already")),
                     None => {
                         let mut exchange_data = HashMap::new();
                         exchange_data.insert(arg.name.to_owned(), secret);
@@ -83,7 +77,7 @@ impl<'a> DB<'a> {
         })
     }
 
-    pub fn delete(&self, arg: Arg) -> Result<Rtn, String> {
+    pub fn delete(&self, arg: &Arg) -> Result<Rtn, String> {
         self.after_data(|mut table| {
             table
                 .get_mut(&arg.exchange)
@@ -99,41 +93,45 @@ impl<'a> DB<'a> {
         })
     }
 
-    pub fn list(&self, exchange: Option<&String>) -> Result<Rtn, String> {
+    pub fn list(&self, exchange: Option<String>) -> Result<Rtn, String> {
         self.after_conn(|mut conn| {
             let mut result = vec![];
-            conn.get(self.db_name).map(|data: String| {
-                serde_json::from_str::<Data>(&data).map(|table| match exchange {
-                    Some(exchange_name) => {
-                        if let Some(exchange_data) = table.get(exchange_name) {
-                            for (name, _) in exchange_data.iter() {
-                                result.push(Rtn::Single {
-                                    exchange: exchange_name.to_owned(),
-                                    name: name.to_owned(),
-                                })
-                            }
-                        }
-                    }
-                    None => {
-                        for (exchange_name, exchange_data) in table.iter() {
-                            for (name, _) in exchange_data.iter() {
-                                result.push(Rtn::Single {
-                                    exchange: exchange_name.to_owned(),
-                                    name: name.to_owned(),
-                                })
-                            }
-                        }
-                    }
+            conn.get(self.db_name)
+                .map_err(|e| format!("{:?}", e))
+                .and_then(|data: String| {
+                    serde_json::from_str::<Data>(&data).map_err(|e| format!("{:?}", e))
                 })
-            });
-
-            Ok(Rtn::Multiple {
-                data: Box::new(result),
-            })
+                .and_then(|table| {
+                    match exchange {
+                        Some(exchange_name) => {
+                            if let Some(exchange_data) = table.get(&exchange_name) {
+                                for (name, _) in exchange_data.iter() {
+                                    result.push(Rtn::Single {
+                                        exchange: exchange_name.to_owned(),
+                                        name: name.to_owned(),
+                                    })
+                                }
+                            }
+                        }
+                        None => {
+                            for (exchange_name, exchange_data) in table.iter() {
+                                for (name, _) in exchange_data.iter() {
+                                    result.push(Rtn::Single {
+                                        exchange: exchange_name.to_owned(),
+                                        name: name.to_owned(),
+                                    })
+                                }
+                            }
+                        }
+                    }
+                    Ok(Rtn::Multiple {
+                        data: Box::new(result),
+                    })
+                })
         })
     }
 
-    pub fn get(&self, arg: Arg) -> Result<Rtn, String> {
+    pub fn get(&self, arg: &Arg) -> Result<Rtn, String> {
         self.after_conn(|mut conn| {
             let data: String = conn.get(self.db_name).unwrap();
             let table = serde_json::from_str::<Data>(&data).unwrap();
