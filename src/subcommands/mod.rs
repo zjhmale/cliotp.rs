@@ -1,44 +1,14 @@
-pub mod add;
-pub mod delete;
-pub mod list;
-pub mod now;
-pub mod update;
+pub mod io;
+pub mod ops;
 
 use crate::db::DB;
-pub use add::AddSubCommand;
-pub use delete::DelSubCommand;
-pub use list::ListSubCommand;
-pub use now::NowSubCommand;
-pub use update::UpdateSubCommand;
+pub use io::{Arg, Rtn};
+pub use ops::{
+    AddSubCommand, CliSubCommand, DelSubCommand, ListSubCommand, NowSubCommand, UpdateSubCommand,
+};
 
-use std::collections::HashMap;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
-
-#[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
-pub struct Arg {
-    pub exchange: String,
-    pub name: String,
-    pub secret: Option<String>,
-}
-
-type Exchange = String;
-type Name = String;
-type Secret = String;
-pub type Data = HashMap<Exchange, HashMap<Name, Secret>>;
-
-#[derive(Debug)]
-pub enum Rtn {
-    Empty,
-    Code { code: String },
-    Secret { secret: String },
-    Single { exchange: String, name: String },
-    Multiple { data: Box<Vec<Rtn>> },
-}
-
-pub trait CliSubCommand {
-    fn process(&self, arg: Arg) -> Result<Rtn, String>;
-}
 
 #[derive(StructOpt, Debug)]
 #[structopt(global_settings = &[AppSettings::ColoredHelp, AppSettings::VersionlessSubcommands])]

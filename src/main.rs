@@ -21,5 +21,7 @@ fn main() {
     if let Err(e) = result {
         println!("{:?}", e);
         std::process::exit(1);
+    } else {
+        println!(">>= {:?}", result);
     }
 }
