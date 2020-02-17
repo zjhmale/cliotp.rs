@@ -24,8 +24,7 @@ impl<'a> DB<'a> {
     {
         self.after_conn(|mut conn| {
             conn.get(self.db_name)
-                .map_err(|e| format!("{:?}", e))
-                .and_then(|data: String| {
+                .map_or(Ok(HashMap::new()), |data: String| {
                     serde_json::from_str::<Data>(&data).map_err(|e| format!("{:?}", e))
                 })
                 .and_then(cb)
