@@ -93,5 +93,5 @@ pub fn process(db: DB) -> Result<String, String> {
         }),
     };
 
-    result.map(|rtn| format!("{:?}", rtn))
+    result.map(|rtn| format!("{}", rtn))
 }

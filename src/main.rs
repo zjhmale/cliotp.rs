@@ -16,12 +16,11 @@ fn main() {
         db_name: "cliotp",
         pool: &pool,
     };
-    let result = subcommands::process(db);
-
-    if let Err(e) = result {
-        println!("{:?}", e);
-        std::process::exit(1);
-    } else {
-        println!(">>= {:?}", result);
+    match subcommands::process(db) {
+        Ok(result) => println!("{}", result),
+        Err(e) => {
+            println!("{:?}", e);
+            std::process::exit(1);
+        }
     }
 }
